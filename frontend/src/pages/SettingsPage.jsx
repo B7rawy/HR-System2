@@ -4,18 +4,11 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { useNotifications } from '../components/NotificationSystem'
 import { Label } from '../components/ui/label'
-import { 
-  Settings, 
-  Bell, 
-  Database,
-  Download,
-  Upload,
-  Save,
+import {
   RefreshCw,
   Shield,
   User,
   Building,
-  Globe,
   CreditCard,
   Calendar
 } from 'lucide-react'
@@ -27,7 +20,7 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [newPaymentMethod, setNewPaymentMethod] = useState('')
-  
+
   // إعدادات الشركة
   const [companySettings, setCompanySettings] = useState({
     companyName: '',
@@ -225,8 +218,8 @@ const SettingsPage = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={() => window.location.reload()}
           >
@@ -333,14 +326,12 @@ const SettingsPage = () => {
                     }
                   }
                 })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  userSettings.preferences.notifications.email ? 'bg-primary' : 'bg-gray-200'
-                }`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${userSettings.preferences.notifications.email ? 'bg-primary' : 'bg-gray-200'
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    userSettings.preferences.notifications.email ? 'translate-x-6' : 'translate-x-1'
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${userSettings.preferences.notifications.email ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                 />
               </button>
             </div>
@@ -361,14 +352,12 @@ const SettingsPage = () => {
                     }
                   }
                 })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  userSettings.preferences.notifications.push ? 'bg-primary' : 'bg-gray-200'
-                }`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${userSettings.preferences.notifications.push ? 'bg-primary' : 'bg-gray-200'
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    userSettings.preferences.notifications.push ? 'translate-x-6' : 'translate-x-1'
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${userSettings.preferences.notifications.push ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                 />
               </button>
             </div>
@@ -386,14 +375,12 @@ const SettingsPage = () => {
                     twoFactorAuth: !userSettings.security.twoFactorAuth
                   }
                 })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  userSettings.security.twoFactorAuth ? 'bg-primary' : 'bg-gray-200'
-                }`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${userSettings.security.twoFactorAuth ? 'bg-primary' : 'bg-gray-200'
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    userSettings.security.twoFactorAuth ? 'translate-x-6' : 'translate-x-1'
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${userSettings.security.twoFactorAuth ? 'translate-x-6' : 'translate-x-1'
+                    }`}
                 />
               </button>
             </div>

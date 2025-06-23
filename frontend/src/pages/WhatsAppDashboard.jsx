@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import WhatsAppService from '../services/WhatsAppService';
-import { formatEgyptianPhone, EGYPTIAN_TEST_NUMBERS } from '../utils/phoneFormatter';
+import { EGYPTIAN_TEST_NUMBERS } from '../utils/phoneFormatter';
 import './WhatsAppDashboard.css';
 
 // دالة مسح بيانات WhatsApp Web
@@ -11,14 +11,14 @@ const clearWhatsAppData = () => {
             localStorage.removeItem(key)
         }
     })
-    
+
     // مسح Session Storage
     Object.keys(sessionStorage).forEach(key => {
         if (key.includes('whatsapp') || key.includes('wa-') || key.includes('waweb')) {
             sessionStorage.removeItem(key)
         }
     })
-    
+
     // مسح IndexedDB إذا كان متاح
     if ('indexedDB' in window) {
         try {
@@ -28,7 +28,7 @@ const clearWhatsAppData = () => {
             console.log('تعذر مسح IndexedDB:', error)
         }
     }
-    
+
     alert('تم مسح بيانات WhatsApp Web. أعد تحميل الصفحة وحاول مرة أخرى.')
 }
 
@@ -50,7 +50,7 @@ const WhatsAppDashboard = () => {
     const [success, setSuccess] = useState('');
 
     // Connection state
-    const [connecting, setConnecting] = useState(false);
+    const [connecting] = useState(false);
 
     // Templates state
     const [templates, setTemplates] = useState([]);
@@ -95,6 +95,19 @@ const WhatsAppDashboard = () => {
 
     // Effects
     useEffect(() => {
+        // Service initialization
+        const initializeService = async () => {
+            try {
+                await checkStatus();
+                startEventStream();
+                if (status.status === 'connected') {
+                    await loadTemplates();
+                    await loadStats();
+                }
+            } catch (error) {
+                console.error('Service initialization error:', error);
+            }
+        };
         initializeService();
         return () => {
             WhatsAppService.destroy();
@@ -102,21 +115,10 @@ const WhatsAppDashboard = () => {
         };
     }, []);
 
-    let statusInterval;
 
-    // Service initialization
-    const initializeService = async () => {
-        try {
-            await checkStatus();
-            startEventStream();
-            if (status.status === 'connected') {
-                await loadTemplates();
-                await loadStats();
-            }
-        } catch (error) {
-            console.error('Service initialization error:', error);
-        }
-    };
+
+
+
 
     // Status management
     const checkStatus = async () => {
@@ -132,7 +134,7 @@ const WhatsAppDashboard = () => {
 
     const startEventStream = () => {
         WhatsAppService.startEventStream();
-        
+
         WhatsAppService.on('qr', (data) => {
             setStatus(prev => ({ ...prev, ...data }));
         });
@@ -140,14 +142,14 @@ const WhatsAppDashboard = () => {
         WhatsAppService.on('ready', (data) => {
             setStatus(prev => ({ ...prev, ...data }));
             setSuccess('تم الاتصال بنجاح! 🎉');
-            
+
             // Clear QR polling interval when connected
             if (window.qrInterval) {
                 clearInterval(window.qrInterval);
                 window.qrInterval = null;
                 console.log('✅ QR Code polling stopped - connection successful');
             }
-            
+
             loadTemplates();
             loadStats();
         });
@@ -266,7 +268,7 @@ const WhatsAppDashboard = () => {
             } else {
                 await WhatsAppService.sendMessage(messageForm.to, messageForm.message);
             }
-            
+
             setSuccess('تم إرسال الرسالة بنجاح! 📤');
             setMessageForm({
                 to: '',
@@ -369,7 +371,7 @@ const WhatsAppDashboard = () => {
                     netSalary: testForm.templateData?.netSalary || '0',
                     ...testForm.templateData // دمج أي بيانات إضافية من المستخدم
                 };
-                
+
                 result = await WhatsAppService.sendTemplateMessage(
                     TEST_CONTACT.international,
                     testForm.templateName,
@@ -377,13 +379,13 @@ const WhatsAppDashboard = () => {
                 );
             } else if (testForm.message.trim()) {
                 result = await WhatsAppService.sendMessage(
-                    TEST_CONTACT.international, 
+                    TEST_CONTACT.international,
                     testForm.message
                 );
             } else {
                 throw new Error('يرجى إدخال رسالة أو اختيار قالب');
             }
-            
+
             // Add to test history
             const historyEntry = {
                 id: Date.now(),
@@ -394,17 +396,17 @@ const WhatsAppDashboard = () => {
                 status: 'sent',
                 contact: TEST_CONTACT.name
             };
-            
+
             setTestHistory(prev => [historyEntry, ...prev.slice(0, 9)]); // Keep last 10
             setSuccess(`تم إرسال الرسالة التجريبية إلى ${TEST_CONTACT.name} بنجاح! 📤`);
-            
+
             // Reset form
             setTestForm({
                 message: '',
                 templateName: '',
                 templateData: {}
             });
-            
+
         } catch (error) {
             setError(WhatsAppService.handleApiError(error, 'Test Message'));
         } finally {
@@ -420,7 +422,7 @@ const WhatsAppDashboard = () => {
         try {
             // استخدام الرقم الدولي الصحيح
             await WhatsAppService.sendMessage(TEST_CONTACT.international, messageText);
-            
+
             const historyEntry = {
                 id: Date.now(),
                 timestamp: new Date().toLocaleString('en-US'),
@@ -429,10 +431,10 @@ const WhatsAppDashboard = () => {
                 status: 'sent',
                 contact: TEST_CONTACT.name
             };
-            
+
             setTestHistory(prev => [historyEntry, ...prev.slice(0, 9)]);
             setSuccess(`تم إرسال الرسالة السريعة إلى ${TEST_CONTACT.name} بنجاح! 🚀`);
-            
+
         } catch (error) {
             setError(WhatsAppService.handleApiError(error, 'Quick Test Message'));
         } finally {
@@ -529,7 +531,7 @@ const WhatsAppDashboard = () => {
                 WhatsAppService.getStats(),
                 WhatsAppService.getLogs(50)
             ]);
-            
+
             setStats(WhatsAppService.formatStats(statsResult.stats));
             setLogs(logsResult.logs || []);
         } catch (error) {
@@ -575,10 +577,10 @@ const WhatsAppDashboard = () => {
 
             if (result.success) {
                 setSuccess('🗑️ تم مسح جميع البيانات والجلسات بنجاح! يمكنك الآن البدء من جديد.');
-                
+
                 // Reset local state immediately and completely
-                setStatus({ 
-                    status: 'disconnected', 
+                setStatus({
+                    status: 'disconnected',
                     isReady: false,
                     phone: null,
                     qrCode: null,
@@ -587,20 +589,20 @@ const WhatsAppDashboard = () => {
                     isConnecting: false,
                     lastConnected: null
                 });
-                
+
                 // Stop event stream
                 WhatsAppService.destroy();
-                
+
                 // Clear any intervals
                 if (statusInterval) {
                     clearInterval(statusInterval);
                 }
-                
+
                 // Force immediate status check after clearing
                 setTimeout(() => {
                     checkStatus();
                 }, 1000);
-                
+
             } else {
                 throw new Error(result.message || 'فشل في مسح البيانات');
             }
@@ -621,69 +623,69 @@ const WhatsAppDashboard = () => {
         setLoading(true);
         setError('');
         setSuccess('');
-        
+
         try {
             console.log('🔄 Starting enhanced QR retry...');
-            
+
             // Step 1: Clear all data
             clearWhatsAppData();
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             // Step 2: Force disconnect
             try {
                 await WhatsAppService.disconnect();
             } catch (error) {
                 console.log('Disconnect not needed:', error.message);
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
+
             // Step 3: Clear backend sessions
             const clearResult = await fetch('http://localhost:5001/api/whatsapp/clear-sessions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
+
             if (!clearResult.ok) {
                 console.warn('Backend clear failed');
             }
-            
+
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             // Step 4: Enhanced initialization with new methods
             const initResponse = await fetch('http://localhost:5001/api/whatsapp/initialize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     forceRestart: true,
                     enhancedQR: true,
                     clearSessions: true,
                     retryAttempt: true
                 })
             });
-            
+
             const initResult = await initResponse.json();
-            
+
             if (initResult.success) {
                 setSuccess('🔄 تم بدء عملية إنتاج QR محسنة. انتظر قليلاً...');
-                
+
                 // Step 5: Start monitoring for new QR
                 let attempts = 0;
                 const maxAttempts = 25;
-                
+
                 const checkForQR = async () => {
                     attempts++;
                     console.log(`🔍 Checking for QR (attempt ${attempts}/${maxAttempts})`);
-                    
+
                     try {
                         const statusResult = await checkStatus();
-                        
+
                         if (statusResult && statusResult.qrCode) {
                             setSuccess('✅ تم إنتاج QR Code بطريقة محسنة! امسح الكود بسرعة.');
                             clearInterval(window.qrCheckInterval);
                             return;
                         }
-                        
+
                         if (attempts >= maxAttempts) {
                             clearInterval(window.qrCheckInterval);
                             setError('فشل في إنتاج QR Code حتى بعد التحسينات. جرب إعادة تشغيل النظام.');
@@ -692,11 +694,11 @@ const WhatsAppDashboard = () => {
                         console.log(`QR check attempt ${attempts} failed:`, error.message);
                     }
                 };
-                
+
                 // Start checking for QR
                 checkForQR();
                 window.qrCheckInterval = setInterval(checkForQR, 2500);
-                
+
                 // Cleanup interval after 60 seconds
                 setTimeout(() => {
                     if (window.qrCheckInterval) {
@@ -704,11 +706,11 @@ const WhatsAppDashboard = () => {
                         window.qrCheckInterval = null;
                     }
                 }, 60000);
-                
+
             } else {
                 throw new Error(initResult.message || 'فشل في بدء العملية المحسنة');
             }
-            
+
         } catch (error) {
             console.error('Enhanced QR retry failed:', error);
             setError(`فشل في إعادة المحاولة المحسنة: ${error.message}`);
@@ -718,20 +720,20 @@ const WhatsAppDashboard = () => {
     };
 
     // Notification helpers
-    const showNotification = (message, type = 'info') => {
-        if (type === 'success') {
-            setSuccess(message);
-            setError('');
-        } else {
-            setError(message);
-            setSuccess('');
-        }
-        
-        setTimeout(() => {
-            setSuccess('');
-            setError('');
-        }, 5000);
-    };
+    // const showNotification = (message, type = 'info') => {
+    //     if (type === 'success') {
+    //         setSuccess(message);
+    //         setError('');
+    //     } else {
+    //         setError(message);
+    //         setSuccess('');
+    //     }
+
+    //     setTimeout(() => {
+    //         setSuccess('');
+    //         setError('');
+    //     }, 5000);
+    // };
 
     return (
         <div className="whatsapp-dashboard" dir="rtl">
@@ -741,7 +743,7 @@ const WhatsAppDashboard = () => {
                     <span className={`status-dot ${status.status}`}></span>
                     <span className="status-text">
                         {status.status === 'connected' ? 'متصل' :
-                         status.status === 'connecting' ? 'جاري الاتصال...' : 'غير متصل'}
+                            status.status === 'connecting' ? 'جاري الاتصال...' : 'غير متصل'}
                     </span>
                 </div>
             </div>
@@ -753,7 +755,7 @@ const WhatsAppDashboard = () => {
                     <button onClick={() => setError('')}>×</button>
                 </div>
             )}
-            
+
             {success && (
                 <div className="notification success">
                     <span>✅ {success}</span>
@@ -794,8 +796,8 @@ const WhatsAppDashboard = () => {
                                 <div className="status-info">
                                     <p><strong>الحالة:</strong> {
                                         status.status === 'connected' ? '✅ متصل' :
-                                        status.status === 'connecting' ? '🔄 جاري الاتصال' :
-                                        '❌ غير متصل'
+                                            status.status === 'connecting' ? '🔄 جاري الاتصال' :
+                                                '❌ غير متصل'
                                     }</p>
                                     {status.authInfo && (
                                         <>
@@ -805,10 +807,10 @@ const WhatsAppDashboard = () => {
                                         </>
                                     )}
                                 </div>
-                                
+
                                 <div className="connection-actions">
                                     {status.status !== 'connected' ? (
-                                        <button 
+                                        <button
                                             className="btn btn-primary"
                                             onClick={handleConnect}
                                             disabled={connecting}
@@ -816,7 +818,7 @@ const WhatsAppDashboard = () => {
                                             {connecting ? '🔄 جاري الاتصال...' : '🔗 اتصال'}
                                         </button>
                                     ) : (
-                                        <button 
+                                        <button
                                             className="btn btn-danger"
                                             onClick={handleDisconnect}
                                             disabled={loading}
@@ -824,8 +826,8 @@ const WhatsAppDashboard = () => {
                                             {loading ? '🔄 جاري القطع...' : '🔌 قطع الاتصال'}
                                         </button>
                                     )}
-                                    
-                                    <button 
+
+                                    <button
                                         className="btn btn-warning"
                                         onClick={clearSessions}
                                         disabled={loading}
@@ -834,8 +836,8 @@ const WhatsAppDashboard = () => {
                                     >
                                         {loading ? '🔄 جاري المسح...' : '🗑️ مسح البيانات والبدء من جديد'}
                                     </button>
-                                    
-                                    <button 
+
+                                    <button
                                         className="btn btn-success"
                                         onClick={retryQRGeneration}
                                         disabled={loading}
@@ -872,7 +874,7 @@ const WhatsAppDashboard = () => {
                                 </span>
                             </div>
                             <div className="test-actions">
-                                <button 
+                                <button
                                     className="btn btn-secondary"
                                     onClick={createDefaultTemplates}
                                     disabled={loading}
@@ -886,28 +888,28 @@ const WhatsAppDashboard = () => {
                         <div className="quick-tests">
                             <h3>رسائل سريعة</h3>
                             <div className="quick-buttons">
-                                <button 
+                                <button
                                     className="btn btn-outline-primary"
                                     onClick={() => sendQuickTestMessage('السلام عليكم ورحمة الله وبركاته، هذه رسالة تجريبية من نظام الموارد البشرية 👋')}
                                     disabled={loading || !status.isReady}
                                 >
                                     ✋ رسالة ترحيب
                                 </button>
-                                <button 
+                                <button
                                     className="btn btn-outline-success"
                                     onClick={() => sendQuickTestMessage('تم اختبار النظام بنجاح! ✅ جميع الخدمات تعمل بشكل طبيعي.')}
                                     disabled={loading || !status.isReady}
                                 >
                                     ✅ اختبار النظام
                                 </button>
-                                <button 
+                                <button
                                     className="btn btn-outline-info"
                                     onClick={() => sendQuickTestMessage(`تم الإرسال في ${new Date().toLocaleString('en-US')} 📅⏰`)}
                                     disabled={loading || !status.isReady}
                                 >
                                     🕐 رسالة بالتوقيت
                                 </button>
-                                <button 
+                                <button
                                     className="btn btn-outline-warning"
                                     onClick={() => sendQuickTestMessage('هذه رسالة تجريبية تحتوي على رموز تعبيرية 😊📱💻🎉🔥⭐')}
                                     disabled={loading || !status.isReady}
@@ -925,7 +927,7 @@ const WhatsAppDashboard = () => {
                                     <label>اختر القالب (اختياري):</label>
                                     <select
                                         value={testForm.templateName}
-                                        onChange={(e) => setTestForm({...testForm, templateName: e.target.value})}
+                                        onChange={(e) => setTestForm({ ...testForm, templateName: e.target.value })}
                                         className="form-control"
                                     >
                                         <option value="">بدون قالب - رسالة نصية</option>
@@ -942,7 +944,7 @@ const WhatsAppDashboard = () => {
                                         <label>نص الرسالة:</label>
                                         <textarea
                                             value={testForm.message}
-                                            onChange={(e) => setTestForm({...testForm, message: e.target.value})}
+                                            onChange={(e) => setTestForm({ ...testForm, message: e.target.value })}
                                             placeholder="اكتب رسالتك التجريبية هنا..."
                                             className="form-control"
                                             rows="4"
@@ -950,7 +952,7 @@ const WhatsAppDashboard = () => {
                                     </div>
                                 )}
 
-                                <button 
+                                <button
                                     className="btn btn-primary btn-block"
                                     onClick={handleTestMessage}
                                     disabled={loading || !status.isReady || (!testForm.message.trim() && !testForm.templateName)}
@@ -969,10 +971,10 @@ const WhatsAppDashboard = () => {
                                         <div key={entry.id} className="history-item">
                                             <div className="history-header">
                                                 <span className="history-type">
-                                                    {entry.type === 'template' ? '📝' : 
-                                                     entry.type === 'quick' ? '⚡' : '💬'} 
-                                                    {entry.type === 'template' ? 'قالب' : 
-                                                     entry.type === 'quick' ? 'سريعة' : 'نصية'}
+                                                    {entry.type === 'template' ? '📝' :
+                                                        entry.type === 'quick' ? '⚡' : '💬'}
+                                                    {entry.type === 'template' ? 'قالب' :
+                                                        entry.type === 'quick' ? 'سريعة' : 'نصية'}
                                                 </span>
                                                 <span className="history-time">{entry.timestamp}</span>
                                                 <span className={`history-status ${entry.status}`}>
@@ -1013,7 +1015,7 @@ const WhatsAppDashboard = () => {
                     <div className="templates-tab">
                         <div className="templates-header">
                             <h2>إدارة القوالب</h2>
-                            <button 
+                            <button
                                 className="btn btn-primary"
                                 onClick={() => {
                                     resetTemplateForm();
@@ -1041,7 +1043,7 @@ const WhatsAppDashboard = () => {
                                         <small>المتغيرات: {template.variables?.join(', ') || 'لا توجد'}</small>
                                     </div>
                                     <div className="template-actions">
-                                        <button 
+                                        <button
                                             className="btn btn-sm btn-secondary"
                                             onClick={() => {
                                                 setSelectedTemplate(template);
@@ -1051,7 +1053,7 @@ const WhatsAppDashboard = () => {
                                         >
                                             ✏️ تعديل
                                         </button>
-                                        <button 
+                                        <button
                                             className="btn btn-sm btn-danger"
                                             onClick={() => handleDeleteTemplate(template.id)}
                                         >
@@ -1075,14 +1077,14 @@ const WhatsAppDashboard = () => {
                                     <input
                                         type="text"
                                         value={messageForm.to}
-                                        onChange={(e) => setMessageForm({...messageForm, to: e.target.value})}
+                                        onChange={(e) => setMessageForm({ ...messageForm, to: e.target.value })}
                                         placeholder="201XXXXXXXX (مصري دولي)"
                                         className="form-control"
                                     />
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         className="btn btn-outline-secondary"
-                                        onClick={() => setMessageForm({...messageForm, to: TEST_CONTACT.international})}
+                                        onClick={() => setMessageForm({ ...messageForm, to: TEST_CONTACT.international })}
                                         title="استخدام رقم كريم التجريبي"
                                     >
                                         👤 كريم
@@ -1097,7 +1099,7 @@ const WhatsAppDashboard = () => {
                                 <label>استخدام قالب (اختياري):</label>
                                 <select
                                     value={messageForm.templateName}
-                                    onChange={(e) => setMessageForm({...messageForm, templateName: e.target.value})}
+                                    onChange={(e) => setMessageForm({ ...messageForm, templateName: e.target.value })}
                                     className="form-control"
                                 >
                                     <option value="">بدون قالب</option>
@@ -1114,7 +1116,7 @@ const WhatsAppDashboard = () => {
                                     <label>الرسالة:</label>
                                     <textarea
                                         value={messageForm.message}
-                                        onChange={(e) => setMessageForm({...messageForm, message: e.target.value})}
+                                        onChange={(e) => setMessageForm({ ...messageForm, message: e.target.value })}
                                         placeholder="اكتب رسالتك هنا..."
                                         className="form-control"
                                         rows="5"
@@ -1122,7 +1124,7 @@ const WhatsAppDashboard = () => {
                                 </div>
                             )}
 
-                            <button 
+                            <button
                                 className="btn btn-primary btn-block"
                                 onClick={handleSendMessage}
                                 disabled={loading || !status.isReady}
@@ -1142,7 +1144,7 @@ const WhatsAppDashboard = () => {
                                 <label>قائمة المستقبلين (رقم,اسم في كل سطر):</label>
                                 <textarea
                                     value={bulkForm.recipients}
-                                    onChange={(e) => setBulkForm({...bulkForm, recipients: e.target.value})}
+                                    onChange={(e) => setBulkForm({ ...bulkForm, recipients: e.target.value })}
                                     placeholder="966555555555,أحمد محمد&#10;966666666666,فاطمة علي"
                                     className="form-control"
                                     rows="6"
@@ -1153,7 +1155,7 @@ const WhatsAppDashboard = () => {
                                 <label>القالب:</label>
                                 <select
                                     value={bulkForm.templateName}
-                                    onChange={(e) => setBulkForm({...bulkForm, templateName: e.target.value})}
+                                    onChange={(e) => setBulkForm({ ...bulkForm, templateName: e.target.value })}
                                     className="form-control"
                                 >
                                     <option value="">بدون قالب</option>
@@ -1170,7 +1172,7 @@ const WhatsAppDashboard = () => {
                                     <label>الرسالة:</label>
                                     <textarea
                                         value={bulkForm.message}
-                                        onChange={(e) => setBulkForm({...bulkForm, message: e.target.value})}
+                                        onChange={(e) => setBulkForm({ ...bulkForm, message: e.target.value })}
                                         placeholder="الرسالة المجمعة..."
                                         className="form-control"
                                         rows="4"
@@ -1182,7 +1184,7 @@ const WhatsAppDashboard = () => {
                                 <label>التأخير بين الرسائل (بالثواني):</label>
                                 <select
                                     value={bulkForm.delayMs}
-                                    onChange={(e) => setBulkForm({...bulkForm, delayMs: e.target.value})}
+                                    onChange={(e) => setBulkForm({ ...bulkForm, delayMs: e.target.value })}
                                     className="form-control"
                                 >
                                     <option value="2000">2 ثانية</option>
@@ -1195,16 +1197,16 @@ const WhatsAppDashboard = () => {
                             {bulkProgress && (
                                 <div className="progress-section">
                                     <div className="progress-bar">
-                                        <div 
+                                        <div
                                             className="progress-fill"
-                                            style={{width: `${(bulkProgress.current / bulkProgress.total) * 100}%`}}
+                                            style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
                                         />
                                     </div>
                                     <p>تم إرسال {bulkProgress.current} من {bulkProgress.total}</p>
                                 </div>
                             )}
 
-                            <button 
+                            <button
                                 className="btn btn-primary btn-block"
                                 onClick={handleBulkSend}
                                 disabled={loading || !status.isReady}
@@ -1227,7 +1229,7 @@ const WhatsAppDashboard = () => {
                                         <h4>{template.title}</h4>
                                         <p>الفئة: {template.category}</p>
                                         <small>الحقول المطلوبة: {template.requiredFields.join(', ')}</small>
-                                        <button 
+                                        <button
                                             className="btn btn-sm btn-primary"
                                             onClick={() => {
                                                 setMessageForm({
@@ -1250,7 +1252,7 @@ const WhatsAppDashboard = () => {
                 {activeTab === 'stats' && (
                     <div className="stats-tab">
                         <h2>الإحصائيات والسجلات</h2>
-                        
+
                         {stats && (
                             <div className="stats-cards">
                                 <div className="stat-card">
@@ -1283,14 +1285,14 @@ const WhatsAppDashboard = () => {
                         <div className="logs-section">
                             <div className="logs-header">
                                 <h3>سجل العمليات</h3>
-                                <button 
+                                <button
                                     className="btn btn-secondary"
                                     onClick={loadStats}
                                 >
                                     🔄 تحديث
                                 </button>
                             </div>
-                            
+
                             <div className="logs-list">
                                 {logs.map(log => (
                                     <div key={log.id} className={`log-entry ${log.status}`}>
@@ -1317,7 +1319,7 @@ const WhatsAppDashboard = () => {
                     <div className="modal">
                         <div className="modal-header">
                             <h3>{selectedTemplate ? 'تعديل القالب' : 'قالب جديد'}</h3>
-                            <button 
+                            <button
                                 className="modal-close"
                                 onClick={() => setShowTemplateModal(false)}
                             >×</button>
@@ -1328,26 +1330,26 @@ const WhatsAppDashboard = () => {
                                 <input
                                     type="text"
                                     value={templateForm.name}
-                                    onChange={(e) => setTemplateForm({...templateForm, name: e.target.value})}
+                                    onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
                                     className="form-control"
                                 />
                             </div>
-                            
+
                             <div className="form-group">
                                 <label>الوصف:</label>
                                 <input
                                     type="text"
                                     value={templateForm.description}
-                                    onChange={(e) => setTemplateForm({...templateForm, description: e.target.value})}
+                                    onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                                     className="form-control"
                                 />
                             </div>
-                            
+
                             <div className="form-group">
                                 <label>الفئة:</label>
                                 <select
                                     value={templateForm.category}
-                                    onChange={(e) => setTemplateForm({...templateForm, category: e.target.value})}
+                                    onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
                                     className="form-control"
                                 >
                                     <option value="general">عام</option>
@@ -1356,12 +1358,12 @@ const WhatsAppDashboard = () => {
                                     <option value="meetings">اجتماعات</option>
                                 </select>
                             </div>
-                            
+
                             <div className="form-group">
                                 <label>محتوى القالب:</label>
                                 <textarea
                                     value={templateForm.content}
-                                    onChange={(e) => setTemplateForm({...templateForm, content: e.target.value})}
+                                    onChange={(e) => setTemplateForm({ ...templateForm, content: e.target.value })}
                                     className="form-control"
                                     rows="8"
                                     placeholder="اكتب محتوى القالب... استخدم {{variableName}} للمتغيرات"
@@ -1369,11 +1371,11 @@ const WhatsAppDashboard = () => {
                             </div>
                         </div>
                         <div className="modal-footer">
-                            <button 
+                            <button
                                 className="btn btn-secondary"
                                 onClick={() => setShowTemplateModal(false)}
                             >إلغاء</button>
-                            <button 
+                            <button
                                 className="btn btn-primary"
                                 onClick={handleSaveTemplate}
                                 disabled={loading}
