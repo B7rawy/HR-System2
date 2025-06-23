@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Trash2, 
-  Calendar, 
   Save, 
   RefreshCw,
   AlertCircle,
@@ -12,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Select } from './ui/select';
 import { Alert } from './ui/alert';
 
 const HolidayConfiguration = () => {
