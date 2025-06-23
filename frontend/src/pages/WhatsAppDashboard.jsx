@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import WhatsAppService from '../services/WhatsAppService';
 import { EGYPTIAN_TEST_NUMBERS } from '../utils/phoneFormatter';
 import './WhatsAppDashboard.css';
@@ -35,6 +35,9 @@ const clearWhatsAppData = () => {
 const WhatsAppDashboard = () => {
     // استخدام بيانات كريم من ملف تنسيق الأرقام المصرية
     const TEST_CONTACT = EGYPTIAN_TEST_NUMBERS.KARIM_BAHRAWY;
+
+    // Reference for status interval
+    const statusInterval = useRef(null);
 
     // Main state
     const [activeTab, setActiveTab] = useState('connection');
@@ -111,14 +114,12 @@ const WhatsAppDashboard = () => {
         initializeService();
         return () => {
             WhatsAppService.destroy();
-            if (statusInterval) clearInterval(statusInterval);
+            if (statusInterval.current) {
+                clearInterval(statusInterval.current);
+                statusInterval.current = null;
+            }
         };
     }, []);
-
-
-
-
-
 
     // Status management
     const checkStatus = async () => {
@@ -160,7 +161,7 @@ const WhatsAppDashboard = () => {
         });
 
         // Status polling
-        let statusInterval = setInterval(checkStatus, 5000);
+        statusInterval.current = setInterval(checkStatus, 5000);
     };
 
     // Connection operations
@@ -594,8 +595,9 @@ const WhatsAppDashboard = () => {
                 WhatsAppService.destroy();
 
                 // Clear any intervals
-                if (statusInterval) {
-                    clearInterval(statusInterval);
+                if (statusInterval.current) {
+                    clearInterval(statusInterval.current);
+                    statusInterval.current = null;
                 }
 
                 // Force immediate status check after clearing
