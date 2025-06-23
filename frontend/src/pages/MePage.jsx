@@ -3,9 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Textarea } from '../components/ui/textarea'
 import { 
   User, 
   BarChart3, 
@@ -97,30 +95,11 @@ const MePage = ({ user, activeSection = 'overview' }) => {
   
   // إضافة متغيرات خاصة بقسم الراتب من EmployeeDetailsPage
   const [selectedMonth, setSelectedMonth] = useState('2025-06')
-  const [showBonusModal, setShowBonusModal] = useState(false)
-  const [showDeductionModal, setShowDeductionModal] = useState(false)
-  const [bonusForm, setBonusForm] = useState({
-    type: '',
-    amount: '',
-    description: '',
-    reason: '',
-    month: ''
-  })
-  const [deductionForm, setDeductionForm] = useState({
-    type: '',
-    amount: '',
-    description: '',
-    reason: '',
-    month: ''
-  })
   const [monthlyBonuses, setMonthlyBonuses] = useState([])
   const [monthlyDeductions, setMonthlyDeductions] = useState([])
-  const [loadingSalaryData, setLoadingSalaryData] = useState(false)
   
   // حالة تعديل جدول التأخيرات
-  const [isEditingAttendance, setIsEditingAttendance] = useState(false)
   const [attendanceDataEmployee, setAttendanceDataEmployee] = useState([])
-  const [attendanceStats, setAttendanceStats] = useState(null)
   const [loadingAttendance, setLoadingAttendance] = useState(false)
 
   // حالة بيانات الإحصائيات
