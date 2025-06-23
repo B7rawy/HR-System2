@@ -160,7 +160,7 @@ const WhatsAppDashboard = () => {
         });
 
         // Status polling
-        statusInterval = setInterval(checkStatus, 5000);
+        let statusInterval = setInterval(checkStatus, 5000);
     };
 
     // Connection operations
