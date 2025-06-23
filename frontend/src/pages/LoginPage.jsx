@@ -8,7 +8,7 @@ import { authService } from '../services/api'
 
 const LoginPage = ({ onLogin }) => {
   const [formData, setFormData] = useState({
-    username: '',
+    identifier: '',
     password: ''
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -40,7 +40,7 @@ const LoginPage = ({ onLogin }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: formData.username,
+          identifier: formData.username,
           password: formData.password
         }),
       });
@@ -60,13 +60,13 @@ const LoginPage = ({ onLogin }) => {
         // حفظ التوكن والبيانات
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user || {
-          username: formData.username,
+          identifier: formData.username,
           role: 'admin'
         }));
         
         // استدعاء onLogin callback
         if (onLogin) {
-          onLogin(data.data.user || { username: formData.username, role: 'admin' });
+          onLogin(data.data.user || { identifier: formData.username, role: 'admin' });
         }
         
         // التوجيه للصفحة الرئيسية
@@ -88,8 +88,8 @@ const LoginPage = ({ onLogin }) => {
     
     try {
       const credentials = userType === 'admin' 
-        ? { username: 'admin', password: 'admin123' }  // تصحيح اسم المستخدم
-        : { username: 'employee', password: 'emp123' }
+        ? { identifier: 'admin', password: 'admin123' }  // تصحيح اسم المستخدم
+        : { identifier: 'employee', password: 'emp123' }
       
       console.log('🚀 دخول سريع:', credentials);
       
@@ -110,12 +110,12 @@ const LoginPage = ({ onLogin }) => {
       if (data.success && data.data && data.data.token) {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user || {
-          username: credentials.username,
+          identifier: credentials.username,
           role: userType
         }));
         
         if (onLogin) {
-          onLogin(data.data.user || { username: credentials.username, role: userType });
+          onLogin(data.data.user || { identifier: credentials.username, role: userType });
         }
         
         navigate('/');

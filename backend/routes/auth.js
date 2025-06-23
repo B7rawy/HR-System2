@@ -12,30 +12,34 @@ const JWT_SECRET = process.env.JWT_SECRET || 'hr-system-2024-default-secret-chan
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { identifier, password } = req.body;
 
-    if (!username || !password) {
-      return sendError(res, 400, 'اسم المستخدم وكلمة المرور مطلوبان', 'VALIDATION_ERROR');
+    if (!identifier || !password) {
+      return sendError(res, 400, 'اسم المستخدم/البريد الإلكتروني وكلمة المرور مطلوبان', 'VALIDATION_ERROR');
     }
 
-    // البحث عن المستخدم
-    const user = await User.findOne({ username });
+    // Search for user by either username or email
+    const user = await User.findOne({
+      $or: [
+        { username: identifier },
+        { email: identifier }
+      ]
+    });
+
     if (!user) {
-      return sendError(res, 401, 'اسم المستخدم أو كلمة المرور غير صحيحة', 'UNAUTHORIZED');
+      return sendError(res, 401, 'اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة', 'UNAUTHORIZED');
     }
 
-    // التحقق من كلمة المرور
+    // Verify password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return sendError(res, 401, 'اسم المستخدم أو كلمة المرور غير صحيحة', 'UNAUTHORIZED');
+      return sendError(res, 401, 'اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة', 'UNAUTHORIZED');
     }
 
-    // التحقق من حالة الموافقة للموظفين
+    // Check approval status for employees
     if (user.role === 'employee') {
-      // البحث عن الموظف بعدة طرق
       let employee = await Employee.findOne({ userId: user._id });
       
-      // إذا لم يجد بواسطة userId، ابحث بواسطة البريد الإلكتروني
       if (!employee) {
         employee = await Employee.findOne({ email: user.email });
       }
@@ -45,7 +49,6 @@ router.post('/login', async (req, res) => {
         return sendError(res, 403, 'لم يتم العثور على بيانات الموظف', 'FORBIDDEN');
       }
 
-      // إذا تم العثور على الموظف بدون userId، قم بتحديثه
       if (!employee.userId) {
         employee.userId = user._id;
         await employee.save();
@@ -55,19 +58,19 @@ router.post('/login', async (req, res) => {
       console.log(`🔍 فحص حالة الموافقة للموظف: ${employee.name} - الحالة: ${employee.approvalStatus}`);
 
       if (employee.approvalStatus === 'pending') {
-        return sendError(res, 403, 'حسابك قيد المراجعة من قبل الإدارة', 'PENDING_APPROVAL');
+        return sendError(res, 403, 'حسابك قيد المراجعة من قبل الإدارة', 'PENDING');
       }
 
       if (employee.approvalStatus === 'rejected') {
-        return sendError(res, 403, 'تم رفض طلب التسجيل الخاص بك', 'REJECTED');
+        return sendError(res, 403, 'تم الرفض طلب التسجيل الخاص بك', 'REJECTED');
       }
     }
 
-    // تحديث آخر تسجيل دخول
+    // Update last login
     user.lastLogin = new Date();
     await user.save();
 
-    // إنشاء توكن
+    // Generate JWT token
     const token = jwt.sign(
       { 
         id: user._id,
@@ -93,7 +96,7 @@ router.post('/login', async (req, res) => {
           lastName: user.lastName,
           department: user.department,
           position: user.position,
-          preferences: user.preferences
+          preferences: user.preferences,
         }
       }
     });
@@ -119,7 +122,7 @@ router.get('/verify', async (req, res) => {
     const token = auth.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // البحث عن المستخدم للتأكد من أنه ما زال موجوداً
+    // Verify user still exists
     const user = await User.findById(decoded.id);
     if (!user) {
       return sendError(res, 401, 'المستخدم غير موجود', 'UNAUTHORIZED');
@@ -138,65 +141,68 @@ router.get('/verify', async (req, res) => {
           lastName: user.lastName,
           department: user.department,
           position: user.position,
-          preferences: user.preferences
+          preferences: user.preferences,
         }
       }
     });
   } catch (error) {
-    // تقليل عدد رسائل الخطأ المكررة
     if (error.name === 'JsonWebTokenError') {
-      console.warn('⚠️ JWT signature verification failed - client may have outdated token');
+      console.warn('⚠️ WARNING: JWT signature verification failed - client may have outdated token');
+      return sendError(res, 401, 'التوكن غير صالح', 'UNAUTHORIZED');
     } else if (error.name === 'TokenExpiredError') {
-      console.warn('⚠️ JWT token expired');
+      console.warn('⚠️ WARNING: Token expired');
+      return sendError(res, 401, 'التوكن منتهي الصلاحية', 'TOKEN_EXPIRED');
     } else {
-      console.error('Token verification error:', error.message);
+      console.error('Token verification error:', error);
+      return sendError(res, 500, 'حدث خطأ أثناء التحقق من التوكن', 'SERVER_ERROR');
     }
-    sendError(res, 401, 'التوكن غير صالح أو منتهي الصلاحية', 'UNAUTHORIZED');
   }
 });
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    console.log('📥 طلب تسجيل جديد:', req.body);
-    const { username, email, password, role, firstName, lastName, phone, department, position, birthDate } = req.body;
+    console.log('📍 Trying to receive new registration request:', 'POST');
+    const { username, email, password, role, firstName, lastName, phone, department, department_id, position, birthDate } = req.body;
 
-    // التحقق من البيانات المطلوبة
-    if (!username || !email || !password || !firstName || !phone || !department || !position) {
+    // Validate required fields
+    if (!username || !password || !email || !firstName || !phone || !department) {
       return sendError(res, 400, 'جميع الحقول مطلوبة', 'VALIDATION_ERROR');
     }
 
-    // التحقق من صحة البريد الإلكتروني
+    // Validate email format
     if (!validateEmail(email)) {
       return sendError(res, 400, 'البريد الإلكتروني غير صالح', 'VALIDATION_ERROR');
     }
 
-    // التحقق من عدم وجود المستخدم
+    // Check for existing user
     const existingUser = await User.findOne({
-      $or: [{ username }, { email }]
+      $or: [
+        { username: username }, 
+        { email: email }
+      ]
     });
 
     if (existingUser) {
       if (existingUser.username === username) {
-        return sendError(res, 409, 'اسم المستخدم مستخدم من قبل', 'CONFLICT');
-      }
-      if (existingUser.email === email) {
-        return sendError(res, 409, 'البريد الإلكتروني مستخدم من قبل', 'CONFLICT');
+        return sendError(res, 409, 'اسم المستخدم مستخدم بالفعل', 'CONFLICT');
+      } else if (existingUser.email === email) {
+        return sendError(res, 409, 'البريد الإلكتروني مستخدم بالفعل', 'CONFLICT');
       }
     }
 
-    // إنشاء مستخدم جديد مع تعيين الدور تلقائيًا حسب المنصب
+    // Create new user with automatic role assignment based on position
     let userRole = role;
     if (!userRole) {
-      if (position === 'مدير' || position === 'مدير عام' || position === 'مدير مساعد') {
-        userRole = 'admin';
+      if (position === 'مدير' || position === 'مدير عام' || position === 'مساعد مدير') {
+        userRole = 'administrator';
       } else {
         userRole = 'employee';
       }
     }
 
-    // إنشاء المستخدم بحالة pending للموظفين
-    const newUser = new User({
+    // Create user with appropriate status based on role
+    const user = new User({
       username,
       email,
       password,
@@ -205,24 +211,26 @@ router.post('/register', async (req, res) => {
       lastName,
       phone,
       department,
+      department_id,
       position,
-      status: userRole === 'admin' ? 'active' : 'pending', // تعيين الحالة بناءً على الدور
+      status: userRole === 'administrator' ? 'active' : 'pending',
       createdBy: 'system'
     });
 
-    console.log('💾 حفظ المستخدم الجديد:', { username, email, role: userRole });
-    await newUser.save();
-    console.log('✅ تم حفظ المستخدم بنجاح:', newUser._id);
+    console.log('Saving user:', user);
+    await user.save();
+    console.log('✅ User saved successfully:', user._id);
 
-    // إنشاء موظف جديد مع حالة الموافقة "معلق"
-    const newEmployee = new Employee({
-      userId: newUser._id,
-      name: `${firstName} ${lastName || ''}`.trim(),
-      email,
-      phone,
-      department,
-      position,
-      nationalId: `${Date.now()}${Math.random().toString(36).substr(2, 5)}`, // توليد nationalId مؤقت
+    // Create new employee record
+    const newEmployeeRecord = new Employee({
+      userId: user._id,
+      name: `${firstName} ${lastName || ''}`,
+      email: user.email,
+      department: user.department,
+      department_id: department_id,
+      phone: user.phone,
+      position: user.position,
+      nationalId: `${Date.now()}${Math.random().toString(36).substring(2, 5)}`,
       birthDate: birthDate || null,
       startDate: new Date(),
       status: 'تحت التدريب',
@@ -230,7 +238,7 @@ router.post('/register', async (req, res) => {
       approvalDetails: {
         status: 'pending',
         requestedAt: new Date(),
-        requestedBy: newUser._id
+        requestedBy: user._id
       },
       baseSalary: 0,
       allowances: {
@@ -255,32 +263,32 @@ router.post('/register', async (req, res) => {
       createdBy: 'system'
     });
 
-    console.log('💾 حفظ الموظف الجديد:', { name: newEmployee.name, email: newEmployee.email });
-    await newEmployee.save();
-    console.log('✅ تم حفظ الموظف بنجاح:', newEmployee._id);
+    console.log('Saving employee:', newEmployeeRecord);
+    await newEmployeeRecord.save();
+    console.log('✅ Employee saved successfully:', newEmployeeRecord._id);
 
-    // تحديث معرف الموظف في المستخدم
-    newUser.employeeId = newEmployee._id;
-    await newUser.save();
-    console.log('🔗 تم ربط المستخدم بالموظف');
+    // Update user with employee ID
+    user.employeeId = newEmployeeRecord._id;
+    await user.save();
+    console.log('🔗 Linked user to employee');
 
     res.json({
       success: true,
-      message: userRole === 'admin' ? 'تم تسجيل المستخدم بنجاح' : 'تم تقديم طلب التسجيل بنجاح، في انتظار موافقة الإدارة',
+      message: userRole === 'administrator' ? 'تم تسجيل المستخدم بنجاح' : 'تم تقديم طلب التسجيل بنجاح، في انتظار موافقة الإدارة',
       data: {
-        id: newUser._id,
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
-        employeeId: newEmployee._id,
-        status: newUser.status,
-        approvalStatus: newEmployee.approvalStatus
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        employeeId: newEmployeeRecord._id,
+        status: user.status,
+        approvalStatus: newEmployeeRecord.approvalStatus
       }
     });
   } catch (error) {
     console.error('Registration error:', error);
     
-    // معالجة أخطاء التكرار
+    // Handle duplicate errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
       if (field === 'username') {
@@ -294,7 +302,7 @@ router.post('/register', async (req, res) => {
       }
     }
     
-    // معالجة أخطاء التحقق
+    // Handle validation errors
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message);
       return sendError(res, 400, errors.join(', '), 'VALIDATION_ERROR');
@@ -318,7 +326,7 @@ router.post('/forgot-password', async (req, res) => {
       return sendError(res, 404, 'لم يتم العثور على مستخدم بهذا البريد الإلكتروني', 'NOT_FOUND');
     }
 
-    // إنشاء توكن لإعادة تعيين كلمة المرور
+    // Generate reset token
     const resetToken = jwt.sign(
       { id: user._id },
       JWT_SECRET,
@@ -326,11 +334,11 @@ router.post('/forgot-password', async (req, res) => {
     );
 
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // ساعة واحدة
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // TODO: إرسال بريد إلكتروني مع رابط إعادة التعيين
-    // يمكن استخدام خدمة مثل SendGrid أو Nodemailer
+    // TODO: Send email with reset link
+    // Use SendGrid or Nodemailer here
 
     res.json({
       success: true,
@@ -425,10 +433,10 @@ router.get('/temp-list-users', async (req, res) => {
   }
 });
 
-// GET /api/auth/generate-demo-token - إنشاء توكن تجريبي (للاختبار فقط)
+// GET /api/auth/generate-demo-token - Generate demo token (for testing only)
 router.get('/generate-demo-token', async (req, res) => {
   try {
-    // هذا للاختبار فقط - في البيئة الحقيقية يجب حذف هذا
+    // For testing only - should be removed in production
     const demoUser = {
       id: '507f1f77bcf86cd799439011',
       username: 'admin',
@@ -453,7 +461,7 @@ router.get('/generate-demo-token', async (req, res) => {
   }
 });
 
-// GET /api/auth/debug - Debug endpoint للمساعدة في التشخيص
+// GET /api/auth/debug - Debug endpoint for diagnostics
 router.get('/debug', async (req, res) => {
   try {
     console.log('🔍 Debug endpoint called');
@@ -539,7 +547,7 @@ router.get('/debug', async (req, res) => {
   }
 });
 
-// POST /api/auth/test-login - اختبار تسجيل الدخول المبسط
+// POST /api/auth/test-login - Simplified test login
 router.post('/test-login', async (req, res) => {
   try {
     console.log('🧪 Test login endpoint called');
@@ -608,4 +616,4 @@ router.post('/test-login', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
