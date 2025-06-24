@@ -44,7 +44,6 @@ import {
   ChevronRight,
   Filter,
   Search,
-  Calendar,
   SlidersHorizontal,
   X,
   Minus,
