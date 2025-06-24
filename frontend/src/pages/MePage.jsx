@@ -40,33 +40,24 @@ import {
   RefreshCw,
   FileCheck,
   Calculator,
-  Gift,
   ChevronLeft,
   ChevronRight,
   Filter,
   Search,
-  Calendar as CalendarFilter,
+  Calendar,
   SlidersHorizontal,
   X,
   Minus,
-  Edit,
-  Save,
-  XCircle,
-  Mail,
-  Phone,
-  MapPin
 } from 'lucide-react'
 import { 
   ResponsiveContainer, 
   BarChart, 
-  LineChart,
   CartesianGrid, 
   XAxis, 
   YAxis, 
   Tooltip, 
   Legend, 
   Bar,
-  Line
 } from 'recharts'
 import { formatCurrency, formatDate } from '../utils/formatters'
 import dailyAttendanceService from '../services/dailyAttendanceService'

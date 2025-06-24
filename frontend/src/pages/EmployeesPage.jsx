@@ -19,7 +19,6 @@ import {
   FileText,
   Calendar,
   Bell,
-  User,
   Mail,
   Phone,
   ExternalLink

@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button'
 import { Eye, EyeOff, User, Shield, Mail, Lock, Sun, Moon } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
-import { authService } from '../services/api'
 
 const LoginPage = ({ onLogin }) => {
   const [formData, setFormData] = useState({

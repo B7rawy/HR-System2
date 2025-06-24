@@ -589,39 +589,39 @@ const EmployeeDetailsPage = () => {
     }
   }
 
-  const handleDeleteBonus = async (bonusId) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه المكافأة؟')) {
-      return
-    }
+  // const handleDeleteBonus = async (bonusId) => {
+  //   if (!window.confirm('هل أنت متأكد من حذف هذه المكافأة؟')) {
+  //     return
+  //   }
     
-    try {
-      await employeeService.deleteBonus(id, bonusId)
-      await fetchSalaryData() // إعادة تحميل البيانات
-      setNotification({ type: 'success', message: 'تم حذف المكافأة بنجاح' })
-      setTimeout(() => setNotification(null), 3000)
-    } catch (error) {
-      console.error('Error deleting bonus:', error)
-      setNotification({ type: 'error', message: 'حدث خطأ أثناء حذف المكافأة' })
-      setTimeout(() => setNotification(null), 3000)
-    }
-  }
+  //   try {
+  //     await employeeService.deleteBonus(id, bonusId)
+  //     await fetchSalaryData() // إعادة تحميل البيانات
+  //     setNotification({ type: 'success', message: 'تم حذف المكافأة بنجاح' })
+  //     setTimeout(() => setNotification(null), 3000)
+  //   } catch (error) {
+  //     console.error('Error deleting bonus:', error)
+  //     setNotification({ type: 'error', message: 'حدث خطأ أثناء حذف المكافأة' })
+  //     setTimeout(() => setNotification(null), 3000)
+  //   }
+  // }
 
-  const handleDeleteDeduction = async (deductionId) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الخصم؟')) {
-      return
-    }
+  // const handleDeleteDeduction = async (deductionId) => {
+  //   if (!window.confirm('هل أنت متأكد من حذف هذا الخصم؟')) {
+  //     return
+  //   }
     
-    try {
-      await employeeService.deleteDeduction(id, deductionId)
-      await fetchSalaryData() // إعادة تحميل البيانات
-      setNotification({ type: 'success', message: 'تم حذف الخصم بنجاح' })
-      setTimeout(() => setNotification(null), 3000)
-    } catch (error) {
-      console.error('Error deleting deduction:', error)
-      setNotification({ type: 'error', message: 'حدث خطأ أثناء حذف الخصم' })
-      setTimeout(() => setNotification(null), 3000)
-    }
-  }
+  //   try {
+  //     await employeeService.deleteDeduction(id, deductionId)
+  //     await fetchSalaryData() // إعادة تحميل البيانات
+  //     setNotification({ type: 'success', message: 'تم حذف الخصم بنجاح' })
+  //     setTimeout(() => setNotification(null), 3000)
+  //   } catch (error) {
+  //     console.error('Error deleting deduction:', error)
+  //     setNotification({ type: 'error', message: 'حدث خطأ أثناء حذف الخصم' })
+  //     setTimeout(() => setNotification(null), 3000)
+  //   }
+  // }
 
   // دوال تعديل بيانات الحضور
   const handleEditAttendance = () => {
