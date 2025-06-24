@@ -16,7 +16,7 @@ import { settingsService } from '../services/api'
 import HolidayConfiguration from '../components/HolidayConfiguration'
 
 const SettingsPage = () => {
-  const { showSuccess, showError, showWarning, showInfo } = useNotifications()
+  const { showSuccess, showError } = useNotifications()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [newPaymentMethod, setNewPaymentMethod] = useState('')
@@ -105,7 +105,7 @@ const SettingsPage = () => {
   // تحديث إعدادات الشركة
   const handleCompanyUpdate = async (data) => {
     try {
-      setSaving(true)
+      setSaving(!saving)
       const response = await settingsService.updateCompany(data)
       if (response.success) {
         setCompanySettings(data)
@@ -114,14 +114,14 @@ const SettingsPage = () => {
     } catch (error) {
       showError('حدث خطأ في تحديث إعدادات الشركة')
     } finally {
-      setSaving(false)
+      setSaving(saving)
     }
   }
 
   // تحديث إعدادات المستخدم
   const handleUserUpdate = async (data) => {
     try {
-      setSaving(true)
+      setSaving(!saving)
       const response = await settingsService.updateUser(data)
       if (response.success) {
         setUserSettings(data)
@@ -130,14 +130,14 @@ const SettingsPage = () => {
     } catch (error) {
       showError('حدث خطأ في تحديث إعدادات المستخدم')
     } finally {
-      setSaving(false)
+      setSaving(saving)
     }
   }
 
   // تحديث إعدادات الدفع
   const handlePaymentUpdate = async (data) => {
     try {
-      setSaving(true)
+      setSaving(!saving)
       const response = await settingsService.updatePayment(data)
       if (response.success) {
         setPaymentSettings(data)
@@ -146,14 +146,14 @@ const SettingsPage = () => {
     } catch (error) {
       showError('حدث خطأ في تحديث إعدادات الدفع')
     } finally {
-      setSaving(false)
+      setSaving(saving)
     }
   }
 
   // إضافة وسيلة دفع جديدة
   const handleAddPaymentMethod = async (method) => {
     try {
-      setSaving(true)
+      setSaving(!saving)
       const updatedMethods = [...paymentSettings.methods, method]
       const response = await settingsService.updatePayment({
         ...paymentSettings,
@@ -169,14 +169,14 @@ const SettingsPage = () => {
     } catch (error) {
       showError('حدث خطأ في إضافة وسيلة الدفع')
     } finally {
-      setSaving(false)
+      setSaving(saving)
     }
   }
 
   // حذف وسيلة دفع
   const handleRemovePaymentMethod = async (method) => {
     try {
-      setSaving(true)
+      setSaving(!saving)
       const updatedMethods = paymentSettings.methods.filter(m => m !== method)
       const response = await settingsService.updatePayment({
         ...paymentSettings,
@@ -192,7 +192,7 @@ const SettingsPage = () => {
     } catch (error) {
       showError('حدث خطأ في حذف وسيلة الدفع')
     } finally {
-      setSaving(false)
+      setSaving(saving)
     }
   }
 
