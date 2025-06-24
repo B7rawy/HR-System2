@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button'
 import { formatCurrency, formatDate } from '../utils/formatters'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { TrendingUp, TrendingDown, Users, DollarSign, AlertTriangle, Eye, Download, Calendar, UserCheck, Clock, MapPin, Wifi, Phone, Mail } from 'lucide-react'
-import { employeeService, transactionService } from '../services/api'
+import { employeeService } from '../services/api'
 import api from '../services/api'
 
 const DashboardPage = () => {
@@ -20,7 +20,7 @@ const DashboardPage = () => {
   const [monthlyData, setMonthlyData] = useState([]);
   const [expenseCategories, setExpenseCategories] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
-  const [alerts, setAlerts] = useState([]);
+  const [alerts] = useState([]);
 
   // بيانات الموظفين النشطين
   const [activeEmployees, setActiveEmployees] = useState([]);

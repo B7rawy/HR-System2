@@ -32,14 +32,12 @@ import {
   RefreshCw,
   Gift,
   Minus,
-  Trash2,
   Save,
   X,
   BarChart3,
   CalendarIcon,
   Calculator,
   Shield,
-  RotateCcw
 } from 'lucide-react'
 
 const EmployeeDetailsPage = () => {
@@ -231,7 +229,7 @@ const EmployeeDetailsPage = () => {
     if (!selectedMonth || !employee) return
     
     try {
-      setLoadingSalaryData(true)
+      setLoadingSalaryData(!loadingSalaryData)
       const response = await employeeService.getSalaryData(id, selectedMonth)
       if (response.data) {
         setMonthlyBonuses(response.data.bonuses || [])
@@ -242,7 +240,7 @@ const EmployeeDetailsPage = () => {
       setMonthlyBonuses([])
       setMonthlyDeductions([])
     } finally {
-      setLoadingSalaryData(false)
+      setLoadingSalaryData(loadingSalaryData)
     }
   }, [selectedMonth, employee, id])
 

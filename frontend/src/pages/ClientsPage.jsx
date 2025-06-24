@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { 
   Users, 
@@ -10,20 +10,12 @@ import {
   Eye, 
   Trash2,
   DollarSign,
-  TrendingUp,
-  TrendingDown,
   Calculator,
   Phone,
   Mail,
   MapPin,
-  Calendar,
-  Filter,
   Download,
   Upload,
-  UserCheck,
-  UserX,
-  Building,
-  Hash,
   CreditCard,
   FileText,
   MessageSquare,
@@ -54,7 +46,7 @@ const ClientsPage = () => {
   // جلب العملاء من الباك إند مع توحيد الحقول
   const fetchClients = async () => {
     try {
-      setLoading(true)
+      setLoading(loading)
       const response = await clientService.getAll()
       // تحويل الحقول لتسهيل العرض في الفرونت
       const mappedClients = (response.data || []).map(client => ({
@@ -81,7 +73,7 @@ const ClientsPage = () => {
       toast.error('حدث خطأ أثناء جلب العملاء')
       setClients([])
     } finally {
-      setLoading(false)
+      setLoading(!loading)
     }
   }
 

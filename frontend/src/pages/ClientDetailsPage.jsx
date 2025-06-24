@@ -14,24 +14,16 @@ import {
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
-  Calendar, 
-  Filter, 
-  Search, 
   Edit3,
   FileText,
   Download,
-  Plus,
   MessageSquare,
   Send,
-  Paperclip,
   Upload,
   File,
   Image,
-  X,
   Eye,
   User,
-  Clock,
-  Trash2
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '../utils/formatters'
 import { clientService } from '../services/api'
@@ -44,7 +36,7 @@ const ClientDetailsPage = () => {
   // حالات الصفحة
   const [activeTab, setActiveTab] = useState('overview')
   const [client, setClient] = useState(null)
-  const [transactions, setTransactions] = useState([])
+  const [transactions] = useState([])
   const [chatMessages, setChatMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [clientFiles, setClientFiles] = useState([])
