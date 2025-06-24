@@ -11,7 +11,7 @@ import {
   Clock, 
   TrendingUp, 
   FileText, 
-  Calendar as CalendarIcon,
+  CalendarIcon,
   Calendar,
   Activity,
   Wallet,
