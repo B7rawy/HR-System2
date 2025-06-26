@@ -1663,7 +1663,7 @@ const MePage = ({ user, activeSection = 'overview' }) => {
           const employeeData = {
             ...result.data,
             // الاحتفاظ بالبيانات الأصلية مع إضافة القيم الافتراضية فقط للحقول المفقودة
-            baseSalary: result.data.baseSalary || result.data.salary || 0,
+            baseSalary: result.data.baseSalary || result.data.salary || 10000,
             name: result.data.name || result.data.fullName || '',
             fullName: result.data.fullName || result.data.name || '',
             location: result.data.location || result.data.workLocation || result.data.address || '',
