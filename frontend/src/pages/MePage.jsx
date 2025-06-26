@@ -4515,8 +4515,8 @@ const MePage = ({ user, activeSection = 'overview' }) => {
     const totalBonuses = monthlyBonuses.reduce((sum, bonus) => sum + (Number(bonus.amount) || 0), 0);
     const totalMonthlyDeductions = monthlyDeductions.reduce((sum, deduction) => sum + (Number(deduction.amount) || 0), 0);
     const totalAllDeductions = totalMonthlyDeductions + totalLatenessDeduction; // إجمالي جميع الخصومات
-    const netSalary = baseSalary + totalBonuses - totalAllDeductions;
-    
+    const netSalary = employeeData.salary.basic + totalBonuses - totalAllDeductions;
+    // alert(`netSalary:${netSalary} baseSalary:${employeeData.salary.basic} totalBonuses:${totalBonuses} totalAllDeductions:${totalAllDeductions} `)
     console.log('📊 نتائج حسابات الراتب:', {
       workingDaysInMonth,
       totalLateDays,
@@ -4629,7 +4629,7 @@ const MePage = ({ user, activeSection = 'overview' }) => {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-purple-600 dark:text-purple-400 text-sm font-medium mb-1">صافي الراتب</p>
-                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">{formatCurrency(employeeData.salary.net)}</p>
+                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">{formatCurrency(netSalary)}</p>
                   <p className="text-xs text-purple-500 dark:text-purple-400 mt-1">المبلغ النهائي للاستلام</p>
                   </div>
                 <div className="p-3 bg-purple-100 dark:bg-purple-800 rounded-full">
