@@ -79,7 +79,7 @@ const ClientsPage = () => {
 
   useEffect(() => {
     fetchClients()
-  }, [])
+  }, [fetchClients])
 
   // إحصائيات العملاء
   const clientStats = {
