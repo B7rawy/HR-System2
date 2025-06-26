@@ -2121,7 +2121,7 @@ const MePage = ({ user, activeSection = 'overview' }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-600 dark:text-green-400 text-sm font-medium">الراتب الصافي</p>
-                <p className="text-2xl font-bold text-green-700 dark:text-green-300">{formatCurrency(employeeData.salary.net)}</p>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-300"> {formatCurrency(employeeData.salary.net)} </p>
               </div>
               <Wallet className="w-8 h-8 text-green-500 dark:text-green-400" />
             </div>
@@ -4462,7 +4462,7 @@ const MePage = ({ user, activeSection = 'overview' }) => {
     }
 
     // حساب البيانات المالية
-    const baseSalary = employeeProfile?.baseSalary || employeeProfile?.salary || 0
+    const baseSalary = employeeProfile?.baseSalary || employeeProfile?.salary || 200
     
     console.log('💰 بدء حساب الراتب:', {
       employeeProfile: employeeProfile?.name,
@@ -4576,7 +4576,9 @@ const MePage = ({ user, activeSection = 'overview' }) => {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-blue-600 dark:text-blue-400 text-sm font-medium mb-1">الراتب الأساسي</p>
-                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{formatCurrencyLocal(baseSalary)}</p>
+                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{ formatCurrencyLocal(employeeData.salary.basic) }
+                    {/* {alert(formatCurrencyLocal(baseSalary))} */}
+                  </p>
                   <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">المبلغ الثابت الشهري</p>
                     </div>
                 <div className="p-3 bg-blue-100 dark:bg-blue-800 rounded-full">
@@ -4627,7 +4629,7 @@ const MePage = ({ user, activeSection = 'overview' }) => {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-purple-600 dark:text-purple-400 text-sm font-medium mb-1">صافي الراتب</p>
-                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">{formatCurrencyLocal(netSalary)}</p>
+                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">{formatCurrency(employeeData.salary.net)}</p>
                   <p className="text-xs text-purple-500 dark:text-purple-400 mt-1">المبلغ النهائي للاستلام</p>
                   </div>
                 <div className="p-3 bg-purple-100 dark:bg-purple-800 rounded-full">
