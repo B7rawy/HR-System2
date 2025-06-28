@@ -8,109 +8,157 @@ import { employeeService } from '../services/api'
 import api from '../services/api'
 
 const DashboardPage = () => {
-  // بيانات الداشبورد الفعلية (ستربط لاحقًا بالباك إند)
-  const [stats, setStats] = useState({
+  // القيم الافتراضية للإحصائيات
+  const DEFAULT_STATS = {
     totalRevenue: 0,
     totalExpenses: 0,
     totalEmployees: 0,
     pendingPayrolls: 0,
     revenueChange: 0,
     expensesChange: 0
-  });
-  const [monthlyData, setMonthlyData] = useState([]);
-  const [expenseCategories, setExpenseCategories] = useState([]);
-  const [recentTransactions, setRecentTransactions] = useState([]);
-  const [alerts] = useState([]);
+  };
 
-  // بيانات الموظفين النشطين
-  const [activeEmployees, setActiveEmployees] = useState([]);
-  useEffect(() => {
-    const fetchActiveEmployees = async () => {
-      try {
-        const response = await employeeService.getAll();
-        // فلترة الموظفين النشطين فقط
-        const actives = (response.data || response).filter(emp => emp.status === 'active');
-        setActiveEmployees(actives);
-      } catch (error) {
-        // يمكنك إضافة إشعار أو رسالة خطأ هنا
-      }
-    };
-    fetchActiveEmployees();
-  }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // جلب البيانات الحقيقية من الخادم
-        const [statsResponse, employeesResponse, transactionsResponse, analyticsResponse] = await Promise.all([
-          api.get('/api/dashboard/stats'),
-          api.get('/api/dashboard/active-employees'),
-          api.get('/api/transactions/recent'),
-          api.get('/api/dashboard/analytics')
-        ]);
-
-        // تحديث الإحصائيات الرئيسية
-        const statsData = statsResponse.data?.data || {};
-        setStats({
-          totalRevenue: statsData.financial?.totalRevenue || 0,
-          totalExpenses: statsData.financial?.totalExpenses || 0,
-          totalEmployees: statsData.employees?.total || 0,
-          pendingPayrolls: statsData.employees?.pending || 0,
-          revenueChange: 0, // Would need historical data
-          expensesChange: 0  // Would need historical data
-        });
-        
-        // تحديث الموظفين النشطين
-        setActiveEmployees(employeesResponse.data?.data || []);
-        
-        // تحديث المعاملات الحديثة
-        setRecentTransactions(transactionsResponse.data?.data || []);
-        
-        // تحديث بيانات الرسوم البيانية
-        if (analyticsResponse.data?.data) {
-          setMonthlyData(analyticsResponse.data.data.monthlyData || []);
-          setExpenseCategories(analyticsResponse.data.data.expenseCategories || []);
-          setQuickStats(analyticsResponse.data.data.quickStats || {});
-        }
-
-      } catch (error) {
-        console.error('خطأ في جلب البيانات:', error);
-        
-        // في حالة فشل الاتصال، عرض قيم فارغة
-        setStats({
-          totalRevenue: 0,
-          totalExpenses: 0,
-          totalEmployees: 0,
-          pendingPayrolls: 0,
-          revenueChange: 0,
-          expensesChange: 0
-        });
-        
-        // عرض قوائم فارغة للموظفين والمعاملات
-        setActiveEmployees([]);
-        setRecentTransactions([]);
-        setMonthlyData([]);
-        setExpenseCategories([]);
-        setQuickStats({
-          avgSalary: 0,
-          monthlyGrowth: 0,
-          totalBonuses: 0,
-          attendanceRate: 0
-        });
-      }
-    };
-    
-    fetchData();
-  }, []);
-
-  // إحصائيات سريعة (ملخص الأداء المالي)
-  const [quickStats, setQuickStats] = useState({
+  const DEFAULT_QUICK_STATS = {
     avgSalary: 0,
     monthlyGrowth: 0,
     totalBonuses: 0,
     attendanceRate: 0
-  });
+  };
 
+  // بيانات الداشبورد
+  const [stats, setStats] = useState(DEFAULT_STATS);
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [activeEmployees, setActiveEmployees] = useState([]);
+  const [quickStats, setQuickStats] = useState(DEFAULT_QUICK_STATS);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // ألوان فئات المصروفات
+  const EXPENSE_CATEGORIES_COLORS = [
+    '#0088FE', '#00C49F', '#FFBB28', '#FF8042', 
+    '#8884D8', '#82CA9D', '#FFC658', '#A4DE6C'
+  ];
+
+  // جلب بيانات الموظفين النشطين
+  const fetchActiveEmployees = async () => {
+    try {
+      const response = await employeeService.getAll();
+      // فلترة الموظفين النشطين فقط مع إضافة قيم افتراضية
+      const actives = (response.data || response || []).filter(emp => emp.status === 'active').map(emp => ({
+        id: emp.id || 'unknown',
+        name: emp.name || 'غير معروف',
+        position: emp.position || 'غير محدد',
+        department: emp.department || 'غير محدد',
+        status: emp.status || 'غير محدد',
+        location: emp.location || 'المكتب الرئيسي',
+        checkInTime: emp.checkInTime || '--:--',
+        lastActivity: emp.lastActivity || 'غير معروف',
+        workingHours: emp.workingHours || '0',
+        avatarInitials: emp.name ? 
+          `${emp.name.split(' ')[0]?.charAt(0) || ''}${emp.name.split(' ')[1]?.charAt(0) || ''}` 
+          : '??'
+      }));
+      setActiveEmployees(actives);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setActiveEmployees([]);
+    }
+  };
+
+  // جلب جميع بيانات الداشبورد
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const [statsResponse, employeesResponse, transactionsResponse, analyticsResponse] = await Promise.all([
+        api.get('/api/dashboard/stats').catch(() => ({ data: { data: {} }})),
+        api.get('/api/dashboard/active-employees').catch(() => ({ data: { data: [] }})),
+        api.get('/api/transactions/recent').catch(() => ({ data: { data: [] }})),
+        api.get('/api/dashboard/analytics').catch(() => ({ data: { data: {} }}))
+      ]);
+
+      // معالجة بيانات الإحصائيات
+      const statsData = statsResponse.data?.data || {};
+      setStats({
+        totalRevenue: parseFloat(statsData.financial?.totalRevenue) || 0,
+        totalExpenses: parseFloat(statsData.financial?.totalExpenses) || 0,
+        totalEmployees: parseInt(statsData.employees?.total) || 0,
+        pendingPayrolls: parseInt(statsData.employees?.pending) || 0,
+        revenueChange: parseFloat(statsData.financial?.revenueChange) || 0,
+        expensesChange: parseFloat(statsData.financial?.expensesChange) || 0
+      });
+
+      // معالجة بيانات الموظفين
+      setActiveEmployees(employeesResponse.data?.data || []);
+
+      // معالجة بيانات المعاملات
+      setRecentTransactions(transactionsResponse.data?.data?.map(t => ({
+        ...t,
+        amount: parseFloat(t.amount) || 0,
+        date: t.date ? formatDate(t.date) : 'غير محدد'
+      })) || []);
+
+      // معالجة بيانات التحليلات
+      const analyticsData = analyticsResponse.data?.data || {};
+      setMonthlyData(analyticsData.monthlyData || generateDefaultMonthlyData());
+      setExpenseCategories(analyticsData.expenseCategories || generateDefaultExpenseCategories());
+      
+      // معالجة الإحصائيات السريعة
+      setQuickStats({
+        avgSalary: parseFloat(analyticsData.quickStats?.avgSalary) || 0,
+        monthlyGrowth: parseFloat(analyticsData.quickStats?.monthlyGrowth) || 0,
+        totalBonuses: parseFloat(analyticsData.quickStats?.totalBonuses) || 0,
+        attendanceRate: parseFloat(analyticsData.quickStats?.attendanceRate) || 0
+      });
+
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+      setError('فشل في جلب بيانات لوحة التحكم. يرجى المحاولة لاحقاً.');
+      // تعيين القيم الافتراضية في حالة الخطأ
+      setStats(DEFAULT_STATS);
+      setActiveEmployees([]);
+      setRecentTransactions([]);
+      setMonthlyData(generateDefaultMonthlyData());
+      setExpenseCategories(generateDefaultExpenseCategories());
+      setQuickStats(DEFAULT_QUICK_STATS);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // توليد بيانات شهرية افتراضية
+  const generateDefaultMonthlyData = () => {
+    const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو'];
+    return months.map(month => ({
+      name: month,
+      income: 0,
+      expenses: 0,
+      salaries: 0
+    }));
+  };
+
+  // توليد فئات مصروفات افتراضية
+  const generateDefaultExpenseCategories = () => {
+    const categories = [
+      'رواتب', 'مرافق', 'تسويق', 'تطوير', 'صيانة', 'أخرى'
+    ];
+    return categories.map((category, index) => ({
+      name: category,
+      value: 0,
+      color: EXPENSE_CATEGORIES_COLORS[index % EXPENSE_CATEGORIES_COLORS.length]
+    }));
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+    fetchActiveEmployees();
+  }, []);
+
+  // بطاقة الإحصائيات
   const StatCard = ({ title, value, change, icon: Icon, positive }) => (
     <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -121,9 +169,11 @@ const DashboardPage = () => {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-          {value}
+          {typeof value === 'number' && title.includes('إيرادات') ? formatCurrency(value) : 
+           typeof value === 'number' && title.includes('مصروفات') ? formatCurrency(value) : 
+           value}
         </div>
-        {change && (
+        {change !== undefined && (
           <p className={`text-xs flex items-center gap-1 mt-1 ${
             positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
           }`}>
@@ -133,7 +183,30 @@ const DashboardPage = () => {
         )}
       </CardContent>
     </Card>
-  )
+  );
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
+        <AlertTriangle className="w-8 h-8 mx-auto text-red-500 mb-2" />
+        <h3 className="text-lg font-medium text-red-800 dark:text-red-200">{error}</h3>
+        <Button 
+          onClick={fetchDashboardData} 
+          className="mt-3 bg-red-600 hover:bg-red-700"
+        >
+          إعادة المحاولة
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -163,14 +236,14 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <StatCard
           title="إجمالي الإيرادات"
-          value={formatCurrency(stats.totalRevenue)}
+          value={stats.totalRevenue}
           change={stats.revenueChange}
           icon={DollarSign}
           positive={stats.revenueChange > 0}
         />
         <StatCard
           title="إجمالي المصروفات"
-          value={formatCurrency(stats.totalExpenses)}
+          value={stats.totalExpenses}
           change={stats.expensesChange}
           icon={TrendingDown}
           positive={stats.expensesChange < 0}
@@ -201,139 +274,159 @@ const DashboardPage = () => {
             <div className="flex items-center gap-2 text-sm">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-green-600 dark:text-green-400 font-medium">{activeEmployees.filter(emp => emp.status === 'حاضر').length} حاضر</span>
+                <span className="text-green-600 dark:text-green-400 font-medium">
+                  {activeEmployees.filter(emp => emp.status === 'حاضر').length} حاضر
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-blue-600 dark:text-blue-400 font-medium">{activeEmployees.filter(emp => emp.status === 'في اجتماع').length} في اجتماع</span>
+                <span className="text-blue-600 dark:text-blue-400 font-medium">
+                  {activeEmployees.filter(emp => emp.status === 'في اجتماع').length} في اجتماع
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span className="text-orange-600 dark:text-orange-400 font-medium">{activeEmployees.filter(emp => emp.location === 'العمل عن بُعد').length} عن بُعد</span>
+                <span className="text-orange-600 dark:text-orange-400 font-medium">
+                  {activeEmployees.filter(emp => emp.location === 'العمل عن بُعد').length} عن بُعد
+                </span>
               </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {activeEmployees.map((employee) => (
-              <div
-                key={`employee-${employee.id}`}
-                className="relative bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-all duration-200"
-              >
-                {/* حالة الموظف */}
-                <div className="absolute top-3 right-3">
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                    employee.status === 'حاضر' 
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                      : employee.status === 'في اجتماع'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                      : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                  }`}>
-                    <div className={`w-2 h-2 rounded-full ${
-                      employee.status === 'حاضر' ? 'bg-green-500' 
-                      : employee.status === 'في اجتماع' ? 'bg-blue-500' 
-                      : 'bg-orange-500'
-                    }`}></div>
-                    {employee.status}
-                  </div>
-                </div>
-
-                {/* معلومات الموظف الأساسية */}
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">
-                    {employee.name.split(' ')[0].charAt(0)}{employee.name.split(' ')[1]?.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                      {employee.name}
-                    </h3>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                      {employee.position}
-                    </p>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                      {employee.department}
-                    </p>
-                  </div>
-                </div>
-
-                {/* تفاصيل الحضور */}
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Clock className="w-3 h-3 text-gray-500" />
-                    <span className="text-gray-600 dark:text-gray-400">وقت الوصول:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{employee.checkInTime}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <MapPin className="w-3 h-3 text-gray-500" />
-                    <span className="text-gray-600 dark:text-gray-400">الموقع:</span>
-                    <span className="font-medium text-gray-900 dark:text-white truncate">{employee.location}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <Wifi className="w-3 h-3 text-gray-500" />
-                    <span className="text-gray-600 dark:text-gray-400">آخر نشاط:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{employee.lastActivity}</span>
-                  </div>
-                </div>
-
-                {/* إحصائيات العمل */}
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 mb-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-600 dark:text-gray-400">ساعات العمل اليوم</span>
-                    <span className="font-bold text-blue-600 dark:text-blue-400">{employee.workingHours}</span>
-                  </div>
-                </div>
-
-                {/* أزرار التواصل */}
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1 text-xs h-7 border-gray-300 dark:border-gray-600"
+          {activeEmployees.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {activeEmployees.map((employee) => (
+                  <div
+                    key={`employee-${employee.id}`}
+                    className="relative bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-4 border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-all duration-200"
                   >
-                    <Phone className="w-3 h-3" />
-                    اتصال
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1 text-xs h-7 border-gray-300 dark:border-gray-600"
-                  >
-                    <Mail className="w-3 h-3" />
-                    إيميل
-                  </Button>
+                    {/* حالة الموظف */}
+                    <div className="absolute top-3 right-3">
+                      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                        employee.status === 'حاضر' 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                          : employee.status === 'في اجتماع'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                      }`}>
+                        <div className={`w-2 h-2 rounded-full ${
+                          employee.status === 'حاضر' ? 'bg-green-500' 
+                          : employee.status === 'في اجتماع' ? 'bg-blue-500' 
+                          : 'bg-orange-500'
+                        }`}></div>
+                        {employee.status}
+                      </div>
+                    </div>
+
+                    {/* معلومات الموظف الأساسية */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">
+                        {employee.avatarInitials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                          {employee.name}
+                        </h3>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                          {employee.position}
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                          {employee.department}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* تفاصيل الحضور */}
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center gap-2 text-xs">
+                        <Clock className="w-3 h-3 text-gray-500" />
+                        <span className="text-gray-600 dark:text-gray-400">وقت الوصول:</span>
+                        <span className="font-medium text-gray-900 dark:text-white">{employee.checkInTime}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <MapPin className="w-3 h-3 text-gray-500" />
+                        <span className="text-gray-600 dark:text-gray-400">الموقع:</span>
+                        <span className="font-medium text-gray-900 dark:text-white truncate">{employee.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Wifi className="w-3 h-3 text-gray-500" />
+                        <span className="text-gray-600 dark:text-gray-400">آخر نشاط:</span>
+                        <span className="font-medium text-gray-900 dark:text-white">{employee.lastActivity}</span>
+                      </div>
+                    </div>
+
+                    {/* إحصائيات العمل */}
+                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 mb-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-600 dark:text-gray-400">ساعات العمل اليوم</span>
+                        <span className="font-bold text-blue-600 dark:text-blue-400">
+                          {parseFloat(employee.workingHours) || 0} ساعة
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* أزرار التواصل */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-1 text-xs h-7 border-gray-300 dark:border-gray-600"
+                      >
+                        <Phone className="w-3 h-3" />
+                        اتصال
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 gap-1 text-xs h-7 border-gray-300 dark:border-gray-600"
+                      >
+                        <Mail className="w-3 h-3" />
+                        إيميل
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* إحصائيات سريعة للحضور */}
+              <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {activeEmployees.filter(emp => emp.status === 'حاضر').length}
+                  </div>
+                  <div className="text-xs text-green-700 dark:text-green-300 font-medium">حاضر اليوم</div>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {activeEmployees.length > 0 ? 
+                      (activeEmployees.reduce((total, emp) => total + (parseFloat(emp.workingHours) || 0), 0) / activeEmployees.length).toFixed(1) : 
+                      '0.0'}
+                  </div>
+                  <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">متوسط الساعات</div>
+                </div>
+                <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {activeEmployees.filter(emp => emp.location === 'العمل عن بُعد').length}
+                  </div>
+                  <div className="text-xs text-orange-700 dark:text-orange-300 font-medium">عمل عن بُعد</div>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {stats.totalEmployees > 0 ? 
+                      Math.round((activeEmployees.length / stats.totalEmployees) * 100) : 
+                      0}%
+                  </div>
+                  <div className="text-xs text-purple-700 dark:text-purple-300 font-medium">معدل الحضور</div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* إحصائيات سريعة للحضور */}
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {activeEmployees.filter(emp => emp.status === 'حاضر').length}
-              </div>
-              <div className="text-xs text-green-700 dark:text-green-300 font-medium">حاضر اليوم</div>
+            </>
+          ) : (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              لا يوجد موظفين نشطين حالياً
             </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {(activeEmployees.reduce((total, emp) => total + parseFloat(emp.workingHours), 0) / activeEmployees.length).toFixed(1)}
-              </div>
-              <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">متوسط الساعات</div>
-            </div>
-            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {activeEmployees.filter(emp => emp.location === 'العمل عن بُعد').length}
-              </div>
-              <div className="text-xs text-orange-700 dark:text-orange-300 font-medium">عمل عن بُعد</div>
-            </div>
-            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {((activeEmployees.length / stats.totalEmployees) * 100).toFixed(0)}%
-              </div>
-              <div className="text-xs text-purple-700 dark:text-purple-300 font-medium">معدل الحضور</div>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -351,7 +444,10 @@ const DashboardPage = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Tooltip 
+                  formatter={(value) => formatCurrency(value)} 
+                  labelFormatter={(label) => `شهر ${label}`}
+                />
                 <Legend />
                 <Bar dataKey="income" fill="#10b981" name="الإيرادات" />
                 <Bar dataKey="expenses" fill="#ef4444" name="المصروفات" />
@@ -381,10 +477,13 @@ const DashboardPage = () => {
                   dataKey="value"
                 >
                   {expenseCategories.map((entry, index) => (
-                    <Cell key={`expense-cell-${index}`} fill={entry.color} />
+                    <Cell key={`expense-cell-${index}`} fill={entry.color || EXPENSE_CATEGORIES_COLORS[index % EXPENSE_CATEGORIES_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Tooltip 
+                  formatter={(value) => formatCurrency(value)}
+                  labelFormatter={(label) => `فئة: ${label}`}
+                />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -401,41 +500,47 @@ const DashboardPage = () => {
           <CardDescription>تنبيهات مهمة تتطلب انتباهك</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {alerts.map((alert) => (
-              <div
-                key={`alert-${alert.id}`}
-                className={`p-4 rounded-lg border-r-4 ${
-                  alert.type === 'warning' 
-                    ? 'bg-yellow-50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-500' 
-                    : alert.type === 'success'
-                    ? 'bg-green-50 border-green-400 dark:bg-green-900/20 dark:border-green-500'
-                    : 'bg-blue-50 border-blue-400 dark:bg-blue-900/20 dark:border-blue-500'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <p className={`font-medium ${
+          {alerts.length > 0 ? (
+            <div className="space-y-4">
+              {alerts.map((alert) => (
+                <div
+                  key={`alert-${alert.id}`}
+                  className={`p-4 rounded-lg border-r-4 ${
                     alert.type === 'warning' 
-                      ? 'text-yellow-800 dark:text-yellow-200'
+                      ? 'bg-yellow-50 border-yellow-400 dark:bg-yellow-900/20 dark:border-yellow-500' 
                       : alert.type === 'success'
-                      ? 'text-green-800 dark:text-green-200'
-                      : 'text-blue-800 dark:text-blue-200'
-                  }`}>
-                    {alert.message}
-                  </p>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    alert.priority === 'عالي' 
-                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
-                      : alert.priority === 'متوسط'
-                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200'
-                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                  }`}>
-                    {alert.priority}
-                  </span>
+                      ? 'bg-green-50 border-green-400 dark:bg-green-900/20 dark:border-green-500'
+                      : 'bg-blue-50 border-blue-400 dark:bg-blue-900/20 dark:border-blue-500'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <p className={`font-medium ${
+                      alert.type === 'warning' 
+                        ? 'text-yellow-800 dark:text-yellow-200'
+                        : alert.type === 'success'
+                        ? 'text-green-800 dark:text-green-200'
+                        : 'text-blue-800 dark:text-blue-200'
+                    }`}>
+                      {alert.message}
+                    </p>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      alert.priority === 'عالي' 
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
+                        : alert.priority === 'متوسط'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                    }`}>
+                      {alert.priority}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              لا توجد تنبيهات حالياً
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -447,38 +552,41 @@ const DashboardPage = () => {
             <CardDescription>آخر العمليات المالية المسجلة</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentTransactions.slice(0, 5).map((transaction) => (
-                <div key={`recent-transaction-${transaction.id}`} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {transaction.description}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      <span>رقم المعاملة: </span>
-                      <span className="font-semibold">{transaction.transactionNumber || 'غير محدد'}</span>
-                      {transaction.reference && <span> • {transaction.reference}</span>}
-                      {transaction.date && <span> • {formatDate(transaction.date)}</span>}
-                      {transaction.category && <span> • {transaction.category}</span>}
-                      {transaction.subcategory && <span> • {transaction.subcategory}</span>}
-                      {transaction.paymentMethod && <span> • {transaction.paymentMethod}</span>}
-                    </p>
-                  </div>
-                  <div className={`font-bold ${
-                    transaction.type === 'income' 
-                      ? 'text-green-600 dark:text-green-400' 
-                      : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                    {transaction.currency && <span className="text-base ml-1">{transaction.currency}</span>}
-                  </div>
+            {recentTransactions.length > 0 ? (
+              <>
+                <div className="space-y-4">
+                  {recentTransactions.slice(0, 5).map((transaction) => (
+                    <div key={`recent-transaction-${transaction.id}`} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {transaction.description || 'معاملة غير معروفة'}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {transaction.transactionNumber && <span>رقم المعاملة: {transaction.transactionNumber} • </span>}
+                          {transaction.date && <span>{transaction.date} • </span>}
+                          {transaction.category && <span>{transaction.category}</span>}
+                        </p>
+                      </div>
+                      <div className={`font-bold ${
+                        transaction.type === 'income' 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <Button variant="outline" className="w-full mt-4 gap-2">
-              <Eye className="w-4 h-4" />
-              عرض كافة المعاملات
-            </Button>
+                <Button variant="outline" className="w-full mt-4 gap-2">
+                  <Eye className="w-4 h-4" />
+                  عرض كافة المعاملات
+                </Button>
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                لا توجد معاملات حديثة
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -492,19 +600,27 @@ const DashboardPage = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
                 <span className="font-medium text-blue-900 dark:text-blue-100">متوسط الراتب الشهري</span>
-                <span className="font-bold text-blue-900 dark:text-blue-100">{formatCurrency(quickStats.avgSalary)}</span>
+                <span className="font-bold text-blue-900 dark:text-blue-100">
+                  {formatCurrency(quickStats.avgSalary)}
+                </span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
                 <span className="font-medium text-green-900 dark:text-green-100">معدل النمو الشهري</span>
-                <span className="font-bold text-green-900 dark:text-green-100">{quickStats.monthlyGrowth}%</span>
+                <span className="font-bold text-green-900 dark:text-green-100">
+                  {quickStats.monthlyGrowth}%
+                </span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
                 <span className="font-medium text-purple-900 dark:text-purple-100">إجمالي المكافآت</span>
-                <span className="font-bold text-purple-900 dark:text-purple-100">{formatCurrency(quickStats.totalBonuses)}</span>
+                <span className="font-bold text-purple-900 dark:text-purple-100">
+                  {formatCurrency(quickStats.totalBonuses)}
+                </span>
               </div>
               <div className="flex justify-between items-center p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
                 <span className="font-medium text-orange-900 dark:text-orange-100">نسبة الحضور</span>
-                <span className="font-bold text-orange-900 dark:text-orange-100">{quickStats.attendanceRate}%</span>
+                <span className="font-bold text-orange-900 dark:text-orange-100">
+                  {quickStats.attendanceRate}%
+                </span>
               </div>
             </div>
           </CardContent>
@@ -514,4 +630,4 @@ const DashboardPage = () => {
   )
 }
 
-export default DashboardPage 
+export default DashboardPage
